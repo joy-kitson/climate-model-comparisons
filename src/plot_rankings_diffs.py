@@ -82,7 +82,6 @@ def main():
     in_dir = os.path.dirname(os.path.abspath(in_file))
     models_file = args.models_file
     out_dir = args.out_dir
-    #num_metrics = args.num_metrics
 
     ds = xr.open_dataset(in_file, mode='r')
     dfs = []
@@ -96,7 +95,7 @@ def main():
     df = pd.concat(dfs)
     rank_diffs = find_rank_diffs(df)
     models = read_lines(models_file)
-    #plot_diffs(rank_diffs, models, out_dir=out_dir)
+    plot_diffs(rank_diffs, models, out_dir=out_dir)
 
     if out_dir is not None:
         rank_diffs_df = pd.DataFrame({'rank_diff': rank_diffs.stack('num_metrics')})
