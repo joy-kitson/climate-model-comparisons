@@ -28,18 +28,20 @@ def parse_args():
 
     return parser.parse_args()
 
-def select_metrics(ds, num_to_select=10):
-    df = ds.to_dataframe()
-    
-    filtered_df = df.sort_values(['weights']) \
-            .groupby(level=['regions','gcms']) \
+def select_metrics(ds, by='weights', num_to_select=10, region=0):
+    df = ds.isel(regions=region) \
+            .to_dataframe()
+   
+    #filtered_df = df.sort_values(['weights']) \
+    filtered_df = df.sort_values(by) \
+            .groupby(level=['gcms']) \
             .apply(pd.DataFrame.tail, n=num_to_select) \
-            .droplevel(level=[1,2])
+            .droplevel(level=[0])
 
     return filtered_df.to_xarray()
 
 def rank_models(ds):
-    model_scores = ds['weighted_data'].mean(['regions','metrics'])
+    model_scores = ds['weighted_data'].mean(['metrics'])
     ranked_df = model_scores.sortby(model_scores) \
             .to_dataframe()
     #ranked_df.reset_index(inplace=True)
@@ -64,16 +66,17 @@ def save_or_show(save_as=None):
     else:
         plt.savefig(save_as)
 
-def plot_diffs(df, models, out_dir=None):
-    sns.heatmap(df, cmap='vlag', yticklabels=models)
+def plot_diffs(df, models, out_dir=None, by='weights', region=0):
+    plt.figure()
+    sns.heatmap(df, cmap='vlag', yticklabels=models, vmin=-10, vmax=10)
     plt.xlabel('Number of Included Metrics')
     plt.ylabel('Global Climate Models')
-    plt.title('Change in GCM rank with metric inclusion')
+    plt.title(f'Change in GCM rank with metric inclusion (ranked by {by}, for region {region})')
     plt.tight_layout()
 
     out_file = None
     if out_dir is not None:
-        out_file = os.path.join(out_dir, 'rank_diffs_vs_num_metrics.pdf')
+        out_file = os.path.join(out_dir, f'rank_diffs_by_{by}_vs_num_metrics_region_{region}.pdf')
     save_or_show(out_file)
 
 def main():
@@ -84,24 +87,30 @@ def main():
     out_dir = args.out_dir
 
     ds = xr.open_dataset(in_file, mode='r')
-    dfs = []
-    for num_metrics in range(1,ds['metrics'].shape[0]):
-        filtered_ds = select_metrics(ds, num_to_select=num_metrics)
-        ranked_df = rank_models(filtered_ds)
-        
-        ranked_df['num_metrics'] = num_metrics
-        dfs.append(ranked_df)
+    ds['std'] = ds['unweighted_data'].std( 'gcms')
 
-    df = pd.concat(dfs)
-    rank_diffs = find_rank_diffs(df)
-    models = read_lines(models_file)
-    plot_diffs(rank_diffs, models, out_dir=out_dir)
+    for by in ['weights', 'std']:
+        for region in range(ds['regions'].shape[0]):
+            dfs = []
+            for num_metrics in range(1,ds['metrics'].shape[0]):
+                filtered_ds = select_metrics(ds, by=by, region=region,
+                        num_to_select=num_metrics)
+                print(filtered_ds)
+                ranked_df = rank_models(filtered_ds)
+                
+                ranked_df['num_metrics'] = num_metrics
+                dfs.append(ranked_df)
 
-    if out_dir is not None:
-        rank_diffs_df = pd.DataFrame({'rank_diff': rank_diffs.stack('num_metrics')})
-        rank_diffs_ds = rank_diffs_df.to_xarray()
-        out_file = os.path.join(out_dir, 'rank_diffs.nc')
-        rank_diffs_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+            df = pd.concat(dfs)
+            rank_diffs = find_rank_diffs(df)
+            models = read_lines(models_file)
+            plot_diffs(rank_diffs, models, out_dir=out_dir, by=by, region=region)
+
+            if out_dir is not None:
+                rank_diffs_df = pd.DataFrame({'rank_diff': rank_diffs.stack('num_metrics')})
+                rank_diffs_ds = rank_diffs_df.to_xarray()
+                out_file = os.path.join(out_dir, f'rank_diffs_by_{by}_region_{region}.nc')
+                rank_diffs_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
 
 if __name__ == '__main__':
     main()
