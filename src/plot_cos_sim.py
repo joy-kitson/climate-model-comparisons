@@ -23,6 +23,8 @@ def parse_args():
             help='The path to a file containing the names of the GCMS')
     parser.add_argument('-o', '--out-dir', default=None,
             help='The optional path to a directory to save the output file')
+    parser.add_argument('-u', '--use-unweighted', action='store_true',
+            help='Pass this flag to use the unweighted data')
 
     return parser.parse_args()
 
@@ -48,7 +50,7 @@ def get_cosine_similarity(da, dim):
 
     return dot_prods / np.outer(norms, norms)
 
-def plot_similarity(cos_sim, models, out_dir=None):
+def plot_similarity(cos_sim, models, out_dir=None, var='weighted'):
     sns.set(rc={"figure.figsize": (8, 8)})
     fig = sns.heatmap(cos_sim, cmap='rocket', cbar_kws={'label': 'Cosine Similarity'},
             xticklabels=models, yticklabels=models, square=True)
@@ -56,11 +58,13 @@ def plot_similarity(cos_sim, models, out_dir=None):
     fig.set_yticklabels(models, size=10)
     plt.xlabel('Global Climate Model')
     plt.ylabel('Global Climate Model')
+    title_var = var.replace('_',' ')
+    plt.title(f'Cosine similarity between models for {title_var}')
     plt.tight_layout()
 
     out_file = None
     if out_dir is not None:
-        out_file = os.path.join(out_dir, 'model_cos_sim.pdf')
+        out_file = os.path.join(out_dir, f'model_{var}_cos_sim.pdf')
     save_or_show(out_file)
 
 def main():
@@ -70,13 +74,17 @@ def main():
     models_file = args.models_file
     out_dir = args.out_dir
 
+    var = 'weighted_data'
+    if args.use_unweighted:
+        var = 'unweighted_data'
+
     ds = xr.open_dataset(in_file, mode='r')
-    cos_sim = get_cosine_similarity(ds['unweighted_data'], 'gcms')
+    cos_sim = get_cosine_similarity(ds[var], 'gcms')
     models = read_lines(models_file)
-    plot_similarity(cos_sim, models, out_dir=out_dir)
+    plot_similarity(cos_sim, models, out_dir=out_dir, var=var)
 
     if out_dir is not None:
-        out_file = os.path.join(out_dir, 'gcm_cos_sim.csv')
+        out_file = os.path.join(out_dir, f'gcm_{var}_cos_sim.csv')
         np.savetxt(out_file, cos_sim, delimiter=',')
 
 if __name__ == '__main__':
