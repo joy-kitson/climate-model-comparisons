@@ -66,9 +66,6 @@ def get_color(val, cmap=CMAP):
     r, g, b = [int(256 * x) for x in cmap(val)][:3]
     return f'#{r:0>2x}{g:0>2x}{b:0>2x}'
 
-    #scaled_val = 255 - int(255 * val)
-    #return f'#{scaled_val:0>2x}{scaled_val:0>2x}{scaled_val:0>2x}'
-
 def tmp(x, cat_cmap, to_wrap):
     print(x, to_wrap(x), cat_cmap[to_wrap(x)])
     return cat_cmap[to_wrap(x)]
@@ -77,13 +74,11 @@ def create_categorical_colormap(categories, to_wrap=None):
     num_categories = len(categories)
     index_cmap = sns.color_palette("husl", num_categories, as_cmap=False)
     cat_cmap = {c: index_cmap[i] for i, c in enumerate(categories)}
-    #print(cat_cmap)
 
     if to_wrap is None:
         return lambda c: cat_cmap[c]
     else:
         return lambda x: cat_cmap[to_wrap(x)]
-        #return functools.partial(tmp, cat_cmap=cat_cmap, to_wrap=to_wrap)
 
 def create_network(arr, models, threshold=0):
     arr[arr < threshold] = 0
@@ -91,7 +86,6 @@ def create_network(arr, models, threshold=0):
     
     g = nx.from_numpy_matrix(arr)
     nx.relabel_nodes(g, {i: m for i, m in enumerate(models)}, copy=False)
-    #nx.set_node_attributes(g, [get_model_family(m) for m in models])
     return g
 
 def plot_network(g, prog='circo', label_edges=False, save_as='network.pdf',
@@ -103,7 +97,6 @@ def plot_network(g, prog='circo', label_edges=False, save_as='network.pdf',
     if plot_dipole:
         cmap = HOT_COLD_CMAP
 
-    #degrees = dict(nx.degree(g, weight='cos_sim'))
     degrees = dict(nx.degree(g, weight='cos_sim'))
     max_degree = max(np.max(list(degrees.values())), 1)
     if plot_dipole:
