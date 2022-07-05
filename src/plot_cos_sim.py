@@ -43,6 +43,7 @@ def get_cosine_similarity(da, dim):
     return dot_prods / np.outer(norms, norms)
 
 def plot_similarity(cos_sim, models, out_dir=None, var='weighted', region=None):
+    plt.figure()
     sns.set(rc={"figure.figsize": (8, 8)})
     fig = sns.heatmap(cos_sim, cmap='rocket', cbar_kws={'label': 'Cosine Similarity'},
             xticklabels=models, yticklabels=models, square=True)
