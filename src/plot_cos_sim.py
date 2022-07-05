@@ -50,7 +50,7 @@ def get_cosine_similarity(da, dim):
 
     return dot_prods / np.outer(norms, norms)
 
-def plot_similarity(cos_sim, models, out_dir=None, var='weighted'):
+def plot_similarity(cos_sim, models, out_dir=None, var='weighted', region=None):
     sns.set(rc={"figure.figsize": (8, 8)})
     fig = sns.heatmap(cos_sim, cmap='rocket', cbar_kws={'label': 'Cosine Similarity'},
             xticklabels=models, yticklabels=models, square=True)
@@ -64,7 +64,10 @@ def plot_similarity(cos_sim, models, out_dir=None, var='weighted'):
 
     out_file = None
     if out_dir is not None:
-        out_file = os.path.join(out_dir, f'model_{var}_cos_sim.pdf')
+        if region is not None:
+            out_file = os.path.join(out_dir, f'model_{var}_cos_sim_region_{region}.pdf')
+        else:
+            out_file = os.path.join(out_dir, f'model_{var}_cos_sim.pdf')
     save_or_show(out_file)
 
 def main():
@@ -79,13 +82,15 @@ def main():
         var = 'unweighted_data'
 
     ds = xr.open_dataset(in_file, mode='r')
-    cos_sim = get_cosine_similarity(ds[var], 'gcms')
-    models = read_lines(models_file)
-    plot_similarity(cos_sim, models, out_dir=out_dir, var=var)
+    groups = ds[var].groupby('regions')
+    for region, da in groups:
+        cos_sim = get_cosine_similarity(da, 'gcms')
+        models = read_lines(models_file)
+        plot_similarity(cos_sim, models, out_dir=out_dir, var=var, region=region)
 
-    if out_dir is not None:
-        out_file = os.path.join(out_dir, f'gcm_{var}_cos_sim.csv')
-        np.savetxt(out_file, cos_sim, delimiter=',')
+        if out_dir is not None:
+            out_file = os.path.join(out_dir, f'model_{var}_cos_sim_region_{region}.csv')
+            np.savetxt(out_file, cos_sim, delimiter=',')
 
 if __name__ == '__main__':
     main()
