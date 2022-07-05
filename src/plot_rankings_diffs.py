@@ -8,6 +8,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from utils import save_or_show, read_lines
+
 import argparse
 import os
 
@@ -55,16 +57,6 @@ def find_rank_diffs(df):
     df.set_index(['num_metrics','gcms'], inplace=True)
     ranks_df = df['rank'].unstack('num_metrics')
     return ranks_df.diff(axis=1)
-
-def read_lines(path):
-    with open(path, 'r') as in_file:
-        return [l.strip() for l in in_file]
-
-def save_or_show(save_as=None):
-    if save_as is None:
-        plt.show()
-    else:
-        plt.savefig(save_as)
 
 def plot_diffs(df, models, out_dir=None, by='weights', region=0):
     plt.figure()

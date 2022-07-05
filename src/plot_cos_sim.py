@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from utils import save_or_show, read_lines
+
 import argparse
 import os
 
@@ -27,16 +29,6 @@ def parse_args():
             help='Pass this flag to use the unweighted data')
 
     return parser.parse_args()
-
-def read_lines(path):
-    with open(path, 'r') as in_file:
-        return [l.strip() for l in in_file]
-
-def save_or_show(save_as=None):
-    if save_as is None:
-        plt.show()
-    else:
-        plt.savefig(save_as)
 
 def get_cosine_similarity(da, dim):
     num_to_compare = da[dim].shape[0]
