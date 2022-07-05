@@ -30,21 +30,21 @@ def parse_args():
 
     return parser.parse_args()
 
-def get_cosine_similarity(da, dim):
+def get_cosine_similarity(da, dim, axis=0):
     num_to_compare = da[dim].shape[0]
     
     dot_prods = np.zeros((num_to_compare, num_to_compare))
     for i in range(num_to_compare):
         for j in range(num_to_compare):
             dot_prods[i,j] = xr.dot(da.sel({dim: i}), da.sel({dim: j}))
-    
-    norms = np.linalg.norm(da, axis=(0,1))
+
+    norms = np.linalg.norm(da, axis=axis)
 
     return dot_prods / np.outer(norms, norms)
 
 def plot_similarity(cos_sim, models, out_dir=None, var='weighted', region=None):
-    plt.figure()
     sns.set(rc={"figure.figsize": (8, 8)})
+    plt.figure()
     fig = sns.heatmap(cos_sim, cmap='rocket', cbar_kws={'label': 'Cosine Similarity'},
             xticklabels=models, yticklabels=models, square=True)
     fig.set_xticklabels(models, size=10)
@@ -84,6 +84,14 @@ def main():
         if out_dir is not None:
             out_file = os.path.join(out_dir, f'model_{var}_cos_sim_region_{region}.csv')
             np.savetxt(out_file, cos_sim, delimiter=',')
+    
+    cos_sim = get_cosine_similarity(ds[var], 'gcms', axis=(0,1))
+    models = read_lines(models_file)
+    plot_similarity(cos_sim, models, out_dir=out_dir, var=var)
+
+    if out_dir is not None:
+        out_file = os.path.join(out_dir, f'model_{var}_cos_sim_region.csv')
+        np.savetxt(out_file, cos_sim, delimiter=',')
 
 if __name__ == '__main__':
     main()
