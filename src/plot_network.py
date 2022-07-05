@@ -17,6 +17,7 @@ import argparse
 import os
 import sys
 import re
+import functools
 
 PROGS = ['sccmap', 'osage', 'patchwork', 'twopi', 'nop', 'unflatten', 'circo', 'gvpr', 'tred',
         'gc', 'dot', 'sfdp', 'ccomps', 'gvcolor', 'acyclic', 'neato', 'fd']
@@ -43,14 +44,6 @@ def parse_args():
 
     return parser.parse_args()
 
-def create_network(arr, models, threshold=0):
-    arr[arr < threshold] = 0
-    np.fill_diagonal(arr, 0)
-    
-    g = nx.from_numpy_matrix(arr)
-    nx.relabel_nodes(g, {i: m for i, m in enumerate(models)}, copy=False)
-    return g
-
 REGION_LABEL_REGEX = r'(region_\d+)'
 def get_region_label(filename):
     match = re.search(REGION_LABEL_REGEX, filename)
@@ -59,17 +52,50 @@ def get_region_label(filename):
     else:
         return ''
 
+MODEL_FAMILY_REGEX = r'^(\w+)-?'
+def get_model_family(model_name):
+    match = re.search(MODEL_FAMILY_REGEX, model_name)
+    if match:
+        return match.groups(1)[0]
+    else:
+        return ''
+
 CMAP = sns.color_palette('flare', as_cmap=True)
 HOT_COLD_CMAP = sns.color_palette('coolwarm', as_cmap=True)
 def get_color(val, cmap=CMAP):
-    r, g, b, a = [int(256 * x) for x in cmap(val)]
+    r, g, b = [int(256 * x) for x in cmap(val)][:3]
     return f'#{r:0>2x}{g:0>2x}{b:0>2x}'
 
     #scaled_val = 255 - int(255 * val)
     #return f'#{scaled_val:0>2x}{scaled_val:0>2x}{scaled_val:0>2x}'
 
+def tmp(x, cat_cmap, to_wrap):
+    print(x, to_wrap(x), cat_cmap[to_wrap(x)])
+    return cat_cmap[to_wrap(x)]
+
+def create_categorical_colormap(categories, to_wrap=None):
+    num_categories = len(categories)
+    index_cmap = sns.color_palette("husl", num_categories, as_cmap=False)
+    cat_cmap = {c: index_cmap[i] for i, c in enumerate(categories)}
+    #print(cat_cmap)
+
+    if to_wrap is None:
+        return lambda c: cat_cmap[c]
+    else:
+        return lambda x: cat_cmap[to_wrap(x)]
+        #return functools.partial(tmp, cat_cmap=cat_cmap, to_wrap=to_wrap)
+
+def create_network(arr, models, threshold=0):
+    arr[arr < threshold] = 0
+    np.fill_diagonal(arr, 0)
+    
+    g = nx.from_numpy_matrix(arr)
+    nx.relabel_nodes(g, {i: m for i, m in enumerate(models)}, copy=False)
+    #nx.set_node_attributes(g, [get_model_family(m) for m in models])
+    return g
+
 def plot_network(g, prog='circo', label_edges=False, save_as='network.pdf',
-        plot_dipole=False):
+        plot_dipole=False, node_cmap=None):
     weights = nx.get_edge_attributes(g, 'weight')
     a = nx.nx_agraph.to_agraph(g)
 
@@ -88,7 +114,10 @@ def plot_network(g, prog='circo', label_edges=False, save_as='network.pdf',
         node = a.get_node(node_id)
         
         d = degrees[node_id]
-        node.attr['color'] = get_color(degrees[node_id])
+        if node_cmap is None:
+            node.attr['color'] = get_color(degrees[node_id])
+        else:
+            node.attr['color'] = get_color(node_id, node_cmap)
         
         node.attr['penwidth'] = 2
 
@@ -124,7 +153,10 @@ def main():
     threshold = args.threshold
     print_weights = args.print_weights
     prog = args.prog
+    
     models = read_lines(args.model_file)
+    model_families = list({get_model_family(m) for m in models})
+    model_cmap = create_categorical_colormap(model_families, to_wrap=get_model_family)
 
     plot_settings = {
         'prog': args.prog,
@@ -139,7 +171,7 @@ def main():
         region_label = get_region_label(in_file)
         out_file = os.path.join(out_dir, f'{prog}_cos_sim_{threshold}_network{region_label}.pdf')
         
-        plot_network(graph, save_as=out_file, **plot_settings)
+        plot_network(graph, save_as=out_file, node_cmap=model_cmap, **plot_settings)
 
         if print_weights:
             print_degrees(graph)    
