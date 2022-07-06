@@ -44,9 +44,8 @@ def select_metrics(ds, by='weights', num_to_select=10, region=0):
 
 def rank_models(ds):
     model_scores = ds['weighted_data'].mean(['metrics'])
-    ranked_df = model_scores.sortby(model_scores) \
+    ranked_df = model_scores.sortby(model_scores, ascending=False) \
             .to_dataframe()
-    #ranked_df.reset_index(inplace=True)
     ranked_df['rank'] = range(ranked_df.shape[0])
     #print(ranked_df)
 
@@ -79,7 +78,7 @@ def main():
     out_dir = args.out_dir
 
     ds = xr.open_dataset(in_file, mode='r')
-    ds['std'] = ds['unweighted_data'].std( 'gcms')
+    ds['std'] = ds['weighted_data'].std( 'gcms')
 
     for by in ['weights', 'std']:
         for region in range(ds['regions'].shape[0]):
@@ -87,7 +86,7 @@ def main():
             for num_metrics in range(1,ds['metrics'].shape[0]):
                 filtered_ds = select_metrics(ds, by=by, region=region,
                         num_to_select=num_metrics)
-                print(filtered_ds)
+                #print(filtered_ds)
                 ranked_df = rank_models(filtered_ds)
                 
                 ranked_df['num_metrics'] = num_metrics
@@ -103,6 +102,10 @@ def main():
                 rank_diffs_ds = rank_diffs_df.to_xarray()
                 out_file = os.path.join(out_dir, f'rank_diffs_by_{by}_region_{region}.nc')
                 rank_diffs_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+
+                df.sort_values(['num_metrics','rank'], inplace=True)
+                out_file = os.path.join(out_dir, f'ranked_by_{by}_region_{region}.csv')
+                df[['num_metrics','rank','weighted_data']].to_csv(out_file)
 
 if __name__ == '__main__':
     main()
