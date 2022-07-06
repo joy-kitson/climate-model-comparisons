@@ -20,7 +20,7 @@ import re
 import functools
 
 PROGS = ['sccmap', 'osage', 'patchwork', 'twopi', 'nop', 'unflatten', 'circo', 'gvpr', 'tred',
-        'gc', 'dot', 'sfdp', 'ccomps', 'gvcolor', 'acyclic', 'neato', 'fd']
+        'gc', 'dot', 'sfdp', 'ccomps', 'gvcolor', 'acyclic', 'neato', 'fdp']
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -41,6 +41,10 @@ def parse_args():
             help='Pass this flag to print out the total weights for each region')
     parser.add_argument('-d', '--plot-dipole', action='store_true',
             help='Pass this flag to destinguish between hot and cold extremes')
+    parser.add_argument('-a', '--average-inputs', action='store_true',
+            help='Pass this flag to average the input files rather than plot them seperately')
+    parser.add_argument('-c', '--enable-color', action='store_true',
+            help='Pass this flag to color the nodes and edges differently')
 
     return parser.parse_args()
 
@@ -89,7 +93,7 @@ def create_network(arr, models, threshold=0):
     return g
 
 def plot_network(g, prog='circo', label_edges=False, save_as='network.pdf',
-        plot_dipole=False, node_cmap=None):
+        plot_dipole=False, node_cmap=None, enable_color=True):
     weights = nx.get_edge_attributes(g, 'weight')
     a = nx.nx_agraph.to_agraph(g)
 
@@ -106,21 +110,24 @@ def plot_network(g, prog='circo', label_edges=False, save_as='network.pdf',
     for node_id in a.nodes():
         node = a.get_node(node_id)
         
-        d = degrees[node_id]
-        if node_cmap is None:
-            node.attr['color'] = get_color(degrees[node_id])
-        else:
-            node.attr['color'] = get_color(node_id, node_cmap)
-        
         node.attr['penwidth'] = 2
-
+        node.attr['fontname'] = 'Arial'
+        
+        if enable_color:
+            if node_cmap is None:
+                node.attr['color'] = get_color(degrees[node_id])
+            else:
+                node.attr['color'] = get_color(node_id, node_cmap)
+        
     for source, target in a.edges():
         edge = a.get_edge(source, target)
 
         weight = weights[(source, target)]
         edge.attr['weight'] = weight
-        edge.attr['color'] = get_color(weight)
         edge.attr['penwidth'] = 2
+        
+        if enable_color:
+            edge.attr['color'] = get_color(weight)
 
         if label_edges:
             edge.attr['label'] = weight
@@ -155,19 +162,33 @@ def main():
         'prog': args.prog,
         'label_edges': args.label_edges,
         'plot_dipole': args.plot_dipole,
+        'enable_color': args.enable_color,
     }
 
-    for in_file in in_files:
-        arr = np.loadtxt(in_file, delimiter=',')
+    if args.average_inputs:
+        arrays = [np.loadtxt(in_file, delimiter=',') for in_file in in_files]
+        arr = np.mean(arrays, axis=0)
         graph = create_network(arr, models, threshold=threshold)
 
-        region_label = get_region_label(in_file)
-        out_file = os.path.join(out_dir, f'{prog}_cos_sim_{threshold}_network{region_label}.pdf')
+        out_file = os.path.join(out_dir, f'{prog}_cos_sim_{threshold}_network.pdf')
         
         plot_network(graph, save_as=out_file, node_cmap=model_cmap, **plot_settings)
 
         if print_weights:
             print_degrees(graph)    
+
+    else:
+        for in_file in in_files:
+            arr = np.loadtxt(in_file, delimiter=',')
+            graph = create_network(arr, models, threshold=threshold)
+
+            region_label = get_region_label(in_file)
+            out_file = os.path.join(out_dir, f'{prog}_cos_sim_{threshold}_network{region_label}.pdf')
+            
+            plot_network(graph, save_as=out_file, node_cmap=model_cmap, **plot_settings)
+
+            if print_weights:
+                print_degrees(graph)    
 
 if __name__ == '__main__':
     main()
