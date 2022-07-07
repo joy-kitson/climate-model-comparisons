@@ -41,11 +41,13 @@ def select_metrics(ds, by='weights', var='weighted_data', num_to_select=10, regi
     df = ds.isel(regions=region)[[var, by]] \
             .to_dataframe()
    
-    #filtered_df = df.sort_values(['weights']) \
-    filtered_df = df.sort_values(by) \
-            .groupby(level=['gcms']) \
+    filtered_df = df.sort_values(by)
+    
+    # No need to do anything more than sort if we're keeping all the vlaues
+    if num_to_select < ds['metrics'].shape[0]:
+        filtered_df = filtered_df.groupby(level=['gcms']) \
             .apply(pd.DataFrame.tail, n=num_to_select) \
-            .droplevel(level=[0])
+            .droplevel(level=0)
 
     return filtered_df.to_xarray()
 
@@ -63,6 +65,8 @@ def run_t_test(ranked_df, ds, epsilon=.05, var='weighted_data'):
     ranked_ds = ds.sel(gcms=ranked_df.index)[var]
     
     p_values = np.zeros(ranked_ds['gcms'].shape)
+    p_values[:] = np.nan
+
     last_model = None
     for model in ranked_ds['gcms']:
         if last_model is not None:
@@ -78,8 +82,6 @@ def run_t_test(ranked_df, ds, epsilon=.05, var='weighted_data'):
             #print(*lower_stats)
             #print(*upper_stats)
             #return
-        else:
-            p_values[model] = np.nan
         last_model = model
     return p_values
 
@@ -103,6 +105,25 @@ def plot_diffs(df, models, out_dir=None, by='weights', region=0):
         out_file = os.path.join(out_dir, f'rank_diffs_by_{by}_vs_num_metrics_region_{region}.pdf')
     save_or_show(out_file)
 
+def plot_p_values(df, out_dir=None, by='weights', region=0, epsilon=.05):
+    df = df.reset_index()
+    df.set_index(['num_metrics','rank'], inplace=True)
+
+    p_value_df = df['p_value'].unstack('num_metrics')
+    print(p_value_df)
+
+    plt.figure()
+    sns.heatmap(p_value_df, cmap='vlag', vmin=0, vmax=.2)
+    plt.xlabel('Number of Included Metrics')
+    plt.ylabel('Rank')
+    plt.title(f'P-value for paired t-test between subsequent ranks\n (ranked by {by}, for region {region})')
+    plt.tight_layout()
+    
+    out_file = None
+    if out_dir is not None:
+        out_file = os.path.join(out_dir, f'rank_diff_p_values_by_{by}_vs_num_metrics_region_{region}.pdf')
+    save_or_show(out_file)
+
 def main():
     args = parse_args()
     in_file = os.path.realpath(args.in_file)
@@ -121,23 +142,28 @@ def main():
     for by in ['weights', 'std']:
         for region in range(ds['regions'].shape[0]):
             dfs = []
-            for num_metrics in range(1,ds['metrics'].shape[0]):
+            for num_metrics in range(1, ds['metrics'].shape[0] + 1):
                 filtered_ds = select_metrics(ds, by=by, var=var, region=region,
                         num_to_select=num_metrics)
+                if num_metrics == ds['metrics'].shape[0]:
+                    print(filtered_ds)
                 ranked_df = rank_models(filtered_ds, var=var)
                 
                 ranked_df['num_metrics'] = num_metrics
-                #if num_metrics == 59:
-                ranked_df['p_value'] = run_t_test(ranked_df, filtered_ds, epsilon=epsilon,
-                        var=var)
-                #return
-                #print(ranked_df['p_value'])
+                
+                # Shouldn't run paired T-test with zero degrees of freedom
+                if num_metrics == 1:
+                    ranked_df['p_value'] = np.nan
+                else:
+                    ranked_df['p_value'] = run_t_test(ranked_df, filtered_ds, epsilon=epsilon,
+                            var=var)
                 dfs.append(ranked_df)
 
             df = pd.concat(dfs)
             rank_diffs, p_vals = find_rank_diffs(df)
             models = read_lines(models_file)
             plot_diffs(rank_diffs, models, out_dir=out_dir, by=by, region=region)
+            plot_p_values(df, out_dir=out_dir, by=by, region=region, epsilon=epsilon)
 
             if out_dir is not None:
                 rank_diffs_df = pd.DataFrame({'rank_diff': rank_diffs.stack('num_metrics')})
