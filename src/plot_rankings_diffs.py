@@ -52,10 +52,12 @@ def select_metrics(ds, by='weights', var='weighted_data', num_to_select=10, regi
     return filtered_df.to_xarray()
 
 def rank_models(ds, var='weighted_data'):
-    model_scores = ds[var].mean(['metrics'])
-    ranked_df = model_scores.sortby(model_scores, ascending=False) \
-            .to_dataframe()
+    scores = ds[var].mean(['metrics'])
+    scores = scores.sortby(scores, ascending=False) \
+    
+    ranked_df = scores.to_dataframe()
     ranked_df['rank'] = range(ranked_df.shape[0])
+    ranked_df['score'] = scores
 
     return ranked_df
 
@@ -64,9 +66,14 @@ def to_array_like(df, values, cols='num_metrics', rows='gcms'):
     df.set_index([cols, rows], inplace=True)
     return df[values].unstack(cols)
 
-def find_rank_diffs(df):
-    ranks_df = to_array_like(df, 'rank')
-    return ranks_df.diff(axis=1)
+def find_relative(df, var, col=-1):
+    arr_df = to_array_like(df, var)
+    tmp = arr_df.T - arr_df.iloc[:,col].T
+    return tmp.T
+
+def find_diffs(df, var):
+    arr_df = to_array_like(df, var)
+    return arr_df.diff(axis=1)
 
 def run_t_test(ranked_df, ds, epsilon=.05, var='weighted_data'):
     # Ranked_df has the model order, which ds needs
@@ -87,17 +94,43 @@ def run_t_test(ranked_df, ds, epsilon=.05, var='weighted_data'):
         last_model = model
     return p_values
 
-def plot_diffs(df, models, out_dir=None, by='weights', region=0):
+def plot_relative_ranks(df, models, out_dir=None, by='weights', region=0):
+    plt.figure()
+    sns.heatmap(df, cmap='vlag', yticklabels=models) #, vmin=-10, vmax=10)
+    plt.xlabel('Number of Included Metrics')
+    plt.ylabel('Global Climate Models')
+    plt.title(f'Difference between current and final GCM rank\n(ranked by {by}, for region {region})')
+    plt.tight_layout()
+
+    out_file = None
+    if out_dir is not None:
+        out_file = os.path.join(out_dir, f'relative_rank_by_{by}_vs_num_metrics_region_{region}.pdf')
+    save_or_show(out_file)
+
+def plot_diffs(df, models, out_dir=None, by='weights', region=0, var='rank'):
     plt.figure()
     sns.heatmap(df, cmap='vlag', yticklabels=models, vmin=-10, vmax=10)
     plt.xlabel('Number of Included Metrics')
     plt.ylabel('Global Climate Models')
-    plt.title(f'Change in GCM rank with metric inclusion\n(ranked by {by}, for region {region})')
+    plt.title(f'Change in GCM {var} with metric inclusion\n(ranked by {by}, for region {region})')
     plt.tight_layout()
 
     out_file = None
     if out_dir is not None:
         out_file = os.path.join(out_dir, f'rank_diffs_by_{by}_vs_num_metrics_region_{region}.pdf')
+    save_or_show(out_file)
+
+def plot_scores(df, models, out_dir=None, by='weights', region=0):
+    plt.figure()
+    sns.heatmap(df, cmap='rocket', yticklabels=models)
+    plt.xlabel('Number of Included Metrics')
+    plt.ylabel('Weighted Score')
+    plt.title(f'GCM scores for top ranked metrics \n(ranked by {by}, for region {region})')
+    plt.tight_layout()
+    
+    out_file = None
+    if out_dir is not None:
+        out_file = os.path.join(out_dir, f'rank_scores_by_{by}_vs_num_metrics_region_{region}.pdf')
     save_or_show(out_file)
 
 def plot_p_values(df, out_dir=None, by='weights', region=0, epsilon=.05):
@@ -149,19 +182,33 @@ def main():
             df = pd.concat(dfs)
             models = read_lines(models_file)
             
-            rank_diffs = find_rank_diffs(df)
+            relative_ranks = find_relative(df, 'rank')
+            plot_relative_ranks(relative_ranks, models, out_dir=out_dir, by=by, region=region)
+            
+            rank_diffs = find_diffs(df, 'rank')
             plot_diffs(rank_diffs, models, out_dir=out_dir, by=by, region=region)
+            
+            #scores = to_array_like(df, 'score')
+            #plot_scores(scores, models, out_dir=out_dir, by=by, region=region) 
             
             p_value_df = to_array_like(df, 'p_value', rows='rank')
             plot_p_values(p_value_df, out_dir=out_dir, by=by, region=region, epsilon=epsilon)
 
             if out_dir is not None:
+                relative_ranks_df = pd.DataFrame({'rank_diff': relative_ranks.stack('num_metrics')})
+                relative_ranks_ds = relative_ranks_df.to_xarray()
+                out_file = os.path.join(out_dir, f'relative_ranks_by_{by}_region_{region}.nc')
+                relative_ranks_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+                
                 rank_diffs_df = pd.DataFrame({'rank_diff': rank_diffs.stack('num_metrics')})
                 rank_diffs_ds = rank_diffs_df.to_xarray()
                 out_file = os.path.join(out_dir, f'rank_diffs_by_{by}_region_{region}.nc')
                 rank_diffs_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
                 
-                #p_value_df = pd.DataFrame({'p_value': p_value_df.stack('num_metrics')})
+                #score_ds = score_df.stack('num_metrics').to_xarray()
+                #out_file = os.path.join(out_dir, f'scores_by_{by}_region_{region}.nc')
+                #score_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+                
                 p_value_ds = p_value_df.stack('num_metrics').to_xarray()
                 out_file = os.path.join(out_dir, f'p_values_by_{by}_region_{region}.nc')
                 p_value_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
