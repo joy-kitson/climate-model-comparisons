@@ -106,6 +106,7 @@ def plot_relative_ranks(df, models, out_dir=None, by='weights', region=0):
     if out_dir is not None:
         out_file = os.path.join(out_dir, f'relative_rank_by_{by}_vs_num_metrics_region_{region}.pdf')
     save_or_show(out_file)
+    plt.close()
 
 def plot_diffs(df, models, out_dir=None, by='weights', region=0, var='rank'):
     plt.figure()
@@ -119,6 +120,7 @@ def plot_diffs(df, models, out_dir=None, by='weights', region=0, var='rank'):
     if out_dir is not None:
         out_file = os.path.join(out_dir, f'rank_diffs_by_{by}_vs_num_metrics_region_{region}.pdf')
     save_or_show(out_file)
+    plt.close()
 
 def plot_scores(df, models, out_dir=None, by='weights', region=0):
     plt.figure()
@@ -132,6 +134,7 @@ def plot_scores(df, models, out_dir=None, by='weights', region=0):
     if out_dir is not None:
         out_file = os.path.join(out_dir, f'rank_scores_by_{by}_vs_num_metrics_region_{region}.pdf')
     save_or_show(out_file)
+    plt.close()
 
 def plot_p_values(df, out_dir=None, by='weights', region=0, epsilon=.05):
     plt.figure()
@@ -145,6 +148,7 @@ def plot_p_values(df, out_dir=None, by='weights', region=0, epsilon=.05):
     if out_dir is not None:
         out_file = os.path.join(out_dir, f'rank_diff_p_values_by_{by}_vs_num_metrics_region_{region}.pdf')
     save_or_show(out_file)
+    plt.close()
 
 def main():
     args = parse_args()
