@@ -76,13 +76,13 @@ def run_t_test(ranked_df, ds, epsilon=.05, var='weighted_data'):
     p_values[:] = np.nan
 
     last_model = None
-    for model in ranked_ds['gcms']:
+    for rank, model in enumerate(ranked_ds['gcms']):
         if last_model is not None:
             weighted = ranked_ds.sel(gcms=model)
             last_weighted = ranked_ds.sel(gcms=last_model)
             p, lower_stats, upper_stats = ttost_paired(weighted, last_weighted, -epsilon,
                     epsilon)
-            p_values[model] = p
+            p_values[rank] = p
 
         last_model = model
     return p_values
@@ -101,14 +101,8 @@ def plot_diffs(df, models, out_dir=None, by='weights', region=0):
     save_or_show(out_file)
 
 def plot_p_values(df, out_dir=None, by='weights', region=0, epsilon=.05):
-    df = df.reset_index()
-    df.set_index(['num_metrics','rank'], inplace=True)
-
-    p_value_df = df['p_value'].unstack('num_metrics')
-    p_value_df = to_array_like(df, 'p_value', rows='rank')
-
     plt.figure()
-    sns.heatmap(p_value_df, cmap='vlag', vmin=0, vmax=.2)
+    sns.heatmap(df, cmap='vlag', vmin=0, vmax=.2)
     plt.xlabel('Number of Included Metrics')
     plt.ylabel('Rank')
     plt.title(f'P-value for paired t-test between subsequent ranks\n(ranked by {by}, for region {region})')
@@ -153,16 +147,24 @@ def main():
                 dfs.append(ranked_df)
 
             df = pd.concat(dfs)
-            rank_diffs = find_rank_diffs(df)
             models = read_lines(models_file)
+            
+            rank_diffs = find_rank_diffs(df)
             plot_diffs(rank_diffs, models, out_dir=out_dir, by=by, region=region)
-            plot_p_values(df, out_dir=out_dir, by=by, region=region, epsilon=epsilon)
+            
+            p_value_df = to_array_like(df, 'p_value', rows='rank')
+            plot_p_values(p_value_df, out_dir=out_dir, by=by, region=region, epsilon=epsilon)
 
             if out_dir is not None:
                 rank_diffs_df = pd.DataFrame({'rank_diff': rank_diffs.stack('num_metrics')})
                 rank_diffs_ds = rank_diffs_df.to_xarray()
                 out_file = os.path.join(out_dir, f'rank_diffs_by_{by}_region_{region}.nc')
                 rank_diffs_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+                
+                #p_value_df = pd.DataFrame({'p_value': p_value_df.stack('num_metrics')})
+                p_value_ds = p_value_df.stack('num_metrics').to_xarray()
+                out_file = os.path.join(out_dir, f'p_values_by_{by}_region_{region}.nc')
+                p_value_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
 
                 df.sort_values(['num_metrics','rank'], inplace=True)
                 out_file = os.path.join(out_dir, f'ranked_by_{by}_region_{region}.csv')
