@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from utils import save_or_show, read_lines
-from statsmodels.stats.weightstats import ttost_paired
+from statsmodels.stats.weightstats import ttost_paired, DescrStatsW
 
 import argparse
 import os
@@ -53,7 +53,7 @@ def select_metrics(ds, by='weights', var='weighted_data', num_to_select=10, regi
 
 def rank_models(ds, var='weighted_data'):
     scores = ds[var].mean(['metrics'])
-    scores = scores.sortby(scores, ascending=False) \
+    scores = scores.sortby(scores, ascending=False)
     
     ranked_df = scores.to_dataframe()
     ranked_df['rank'] = range(ranked_df.shape[0])
@@ -87,8 +87,11 @@ def run_t_test(ranked_df, ds, epsilon=.05, var='weighted_data'):
         if last_model is not None:
             weighted = ranked_ds.sel(gcms=model)
             last_weighted = ranked_ds.sel(gcms=last_model)
-            p, lower_stats, upper_stats = ttost_paired(weighted, last_weighted, -epsilon,
-                    epsilon)
+            descr = DescrStatsW(weighted - last_weighted)
+            t, p, df = descr.ttest_mean()
+            #p, lower_stats, upper_stats = ttost_paired(weighted, last_weighted, epsilon,
+            #        -epsilon)
+            Description
             p_values[rank] = p
 
         last_model = model
@@ -138,7 +141,7 @@ def plot_scores(df, models, out_dir=None, by='weights', region=0):
 
 def plot_p_values(df, out_dir=None, by='weights', region=0, epsilon=.05):
     plt.figure()
-    sns.heatmap(df, cmap='vlag', vmin=0, vmax=.2)
+    sns.heatmap(df, cmap='vlag', vmin=0, vmax=1)
     plt.xlabel('Number of Included Metrics')
     plt.ylabel('Rank')
     plt.title(f'P-value for paired t-test between subsequent ranks\n(ranked by {by}, for region {region})')
@@ -192,8 +195,8 @@ def main():
             rank_diffs = find_diffs(df, 'rank')
             plot_diffs(rank_diffs, models, out_dir=out_dir, by=by, region=region)
             
-            #scores = to_array_like(df, 'score')
-            #plot_scores(scores, models, out_dir=out_dir, by=by, region=region) 
+            scores = to_array_like(df, 'score')
+            plot_scores(scores, models, out_dir=out_dir, by=by, region=region) 
             
             p_value_df = to_array_like(df, 'p_value', rows='rank')
             plot_p_values(p_value_df, out_dir=out_dir, by=by, region=region, epsilon=epsilon)
