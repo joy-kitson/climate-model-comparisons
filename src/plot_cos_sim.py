@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from utils import save_or_show, read_lines
+from utils import save_or_show, read_lines, write_lines
 
 import argparse
 import os
@@ -27,6 +27,8 @@ def parse_args():
             help='The optional path to a directory to save the output file')
     parser.add_argument('-u', '--use-unweighted', action='store_true',
             help='Pass this flag to use the unweighted data')
+    parser.add_argument('-r', '--plot-regions', action='store_true',
+            help='Pass this flag to plot eahc reigon`s data seperately')
 
     return parser.parse_args()
 
@@ -63,6 +65,35 @@ def plot_similarity(cos_sim, models, out_dir=None, var='weighted', region=None):
             out_file = os.path.join(out_dir, f'model_{var}_cos_sim.pdf')
     save_or_show(out_file)
 
+def plot_distribution(cos_sim, models, out_dir=None, var='weighted', region=None):
+    flat_cos_sim = np.triu(cos_sim, k=1) \
+            .flatten()
+    cos_sim_values = flat_cos_sim[flat_cos_sim > 0]
+    
+    sns.set(rc={"figure.figsize": (8, 8)})
+    plt.figure()
+    fig = sns.histplot(cos_sim_values, kde=True, bins=50)
+    title_var = var.replace('_',' ')
+    plt.title(f'Cosine similarity distribution between models for {title_var}')
+    plt.xlabel('Cosine similarity')
+    plt.tight_layout()
+
+    out_file = None
+    if out_dir is not None:
+        if region is not None:
+            out_file = os.path.join(out_dir, f'model_{var}_cos_sim_distrib_region_{region}.pdf')
+        else:
+            out_file = os.path.join(out_dir, f'model_{var}_cos_sim_distrib.pdf')
+    save_or_show(out_file)
+    
+    if out_dir is not None:
+        if region is not None:
+            out_file = os.path.join(out_dir, f'model_{var}_cos_sim_distrib_region_{region}.csv')
+        else:
+            out_file = os.path.join(out_dir, f'model_{var}_cos_sim_distrib.csv')
+        write_lines(cos_sim_values, out_file)
+
+
 def main():
     args = parse_args()
     in_file = os.path.realpath(args.in_file)
@@ -75,19 +106,23 @@ def main():
         var = 'unweighted_data'
 
     ds = xr.open_dataset(in_file, mode='r')
-    groups = ds[var].groupby('regions')
-    for region, da in groups:
-        cos_sim = get_cosine_similarity(da, 'gcms')
-        models = read_lines(models_file)
-        plot_similarity(cos_sim, models, out_dir=out_dir, var=var, region=region)
 
-        if out_dir is not None:
-            out_file = os.path.join(out_dir, f'model_{var}_cos_sim_region_{region}.csv')
-            np.savetxt(out_file, cos_sim, delimiter=',')
+    if args.plot_regions:
+        groups = ds[var].groupby('regions')
+        for region, da in groups:
+            cos_sim = get_cosine_similarity(da, 'gcms')
+            models = read_lines(models_file)
+            plot_similarity(cos_sim, models, out_dir=out_dir, var=var, region=region)
+            plot_distribution(cos_sim, models, out_dir=out_dir, var=var, region=region)
+
+            if out_dir is not None:
+                out_file = os.path.join(out_dir, f'model_{var}_cos_sim_region_{region}.csv')
+                np.savetxt(out_file, cos_sim, delimiter=',')
     
     cos_sim = get_cosine_similarity(ds[var], 'gcms', axis=(0,1))
     models = read_lines(models_file)
     plot_similarity(cos_sim, models, out_dir=out_dir, var=var)
+    plot_distribution(cos_sim, models, out_dir=out_dir, var=var)
 
     if out_dir is not None:
         out_file = os.path.join(out_dir, f'model_{var}_cos_sim_region.csv')

@@ -12,4 +12,4 @@ def read_lines(path):
 
 def write_lines(lines, path):
     with open(path, 'w') as out_file:
-        out_file.writelines([l + '\n' for l in lines])
+        out_file.writelines([f'{l}\n' for l in lines])
