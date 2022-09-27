@@ -1,6 +1,9 @@
-; Calculate pairwise correlations, similarity score, weights and weighted relative errors
+; Calculate pairwise correlations, similarity score, weights and weighted
+; relative errors
+
+; Command line args:
+;   dir: the directory to load input data from and save output to
 begin
-dir = "../data/"
 
 nv  = 66  ; number of metrics
 nr  = 4   ; number of regions

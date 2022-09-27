@@ -1,6 +1,9 @@
-; Sample script creat heatmaps. This example reads pairwise correlations and plots them for each region
+; Sample script creat heatmaps. This example reads pairwise correlations
+; and plots them for each region
+
+; Command line args:
+;   dir: the directory to load input data from and save output to
 begin
-dir = "../data/"
 
 region = (/"north","east","west","south"/)
 pdata = new((/68,68/),"float")

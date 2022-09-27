@@ -1,6 +1,8 @@
 ; Calculate suitable value for raidus of similarity
+
+; Command line args:
+;   dir: the directory to load input data from and save output to
 begin
-dir = "../data/"
 
 nv  = 66  ; number of metrics
 nit = 100 ; number of iterations
