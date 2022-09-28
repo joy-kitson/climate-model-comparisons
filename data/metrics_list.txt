@@ -1,0 +1,66 @@
+Amplitude Mean P
+Amplitude SD P
+Peak Timing P
+Annual Mean SD P
+DJF (Taylor Stats) P
+MAM (Taylor Stats) P
+JJA (Taylor Stats) P
+SON (Taylor Stats) P
+Dispersion P
+Amplitude Mean T
+Amplitude SD T
+Peak Timing T
+Annual Mean SD T
+DJF (Taylor Stats) T
+MAM (Taylor Stats) T
+JJA (Taylor Stats) T
+SON (Taylor Stats) T
+Dispersion T
+Amplitude Tmin
+Amplitude SD Tmin
+Peak Timing Tmin
+Annual Mean SD Tmin
+DJF (Taylor Stats) Tmin
+MAM (Taylor Stats) Tmin
+JJA (Taylor Stats) Tmin
+SON (Taylor Stats) Tmin
+Dispersion Tmin
+Amplitude Mean Tmax
+Amplitude SD Tmax
+Peak Timing Tmax
+Annual Mean SD Tmax
+DJF (Taylor Stats) Tmax
+MAM (Taylor Stats) Tmax
+JJA (Taylor Stats) Tmax
+SON (Taylor Stats) Tmax
+Dispersion Tmax
+(Taylor Stats) InterQ Range P
+(Taylor Stats) Diurnal
+(Taylor Stats) P from Extremes
+(Taylor Stats) Wet Days
+(Taylor Stats) P intensity
+(Taylor Stats) Summer Days
+(Taylor Stats) Ice days
+(Taylor Stats) InterQ Range Tmax
+(Taylor Stats) Tropical Nights
+(Taylor Stats) Frost days
+(Taylor Stats) InterQ Range Tmin
+ENSO Amplitude
+PDO (1st EOF NP SST)
+NAO (1st EOF NA SLP)
+NAO Correlation DJF P
+NAO Correlation DJF T
+ENSO correlation DJF P
+ENSO correlation DJF T
+PDO correlation DJF P
+PDO correlation DJF T
+DJF (Taylor Stats) zg 500 mb 
+JJA (Taylor Stats) zg 500 mb 
+DJF (Taylor Stats) psl
+JJA (Taylor Stats) psl 
+DJF (Taylor Stats) ua 850 mb 
+DJF (Taylor Stats) va 850 mb 
+DJF (Taylor Stats) hus 850 mb 
+JJA (Taylor Stats) ua 850 mb 
+JJA (Taylor Stats) va 850 mb 
+JJA (Taylor Stats) hus 850 mb 
