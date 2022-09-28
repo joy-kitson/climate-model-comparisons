@@ -3,14 +3,21 @@
 # This script runs all scripts needed to generate the plots and data files
 # for the paper
 
+# Command line arguments:
+#   (1) DATA_DIR - then directory in which to save/load data. ../data by default
+# Run this script as ./run.sh [<DAT_DIR>]
+if [ -z ${1} ]; then
+  DATA_DIR="../data/"
+else
+  DATA_DIR=${1}
+fi
+
 # Echos the command before running it, similar to make
 run () {
   echo $@
   $@
   echo
 }
-
-DATA_DIR="../data/"
 
 # Generates suplimental data files used by other scripts from
 # unweighted_data_37gcms_66metrics_0708.nc
