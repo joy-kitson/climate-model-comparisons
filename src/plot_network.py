@@ -28,7 +28,7 @@ def parse_args():
             help='The path to the input file')
     parser.add_argument('-o', '--out-dir', default=os.path.join('..', 'data'),
             help='The path to the output directory')
-    parser.add_argument('-m', '--model-file', default=os.path.join('..', 'data', 'gred.dat'),
+    parser.add_argument('-m', '--models-file', default=os.path.join('..', 'data', 'gred.dat'),
             help='The path to the file listing the names of the models to be plotted')
     parser.add_argument('-t', '--threshold', type=float, default=.5,
             help='The minimum cosine similarity to consider as consituting a significant ' + \
@@ -154,7 +154,7 @@ def main():
     print_weights = args.print_weights
     prog = args.prog
     
-    models = read_lines(args.model_file)
+    models = read_lines(args.models_file)
     model_families = list({get_model_family(m) for m in models})
     model_cmap = create_categorical_colormap(model_families, to_wrap=get_model_family)
 
