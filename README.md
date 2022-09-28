@@ -1,4 +1,4 @@
-# Climate Model Comparisions
+# Climate Model Comparisons
 Plotting scripts for "Evaluation of CMIP6 GCMs over the CONUS for downscaling studies"
 
 ## Setup
