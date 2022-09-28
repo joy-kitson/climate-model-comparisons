@@ -82,8 +82,11 @@ def save_metrics_order(df, metrics, out_dir=None, by='weights', region=0, var=''
             .sort_values(by, ascending=False)
     sorted_df['name'] = [metrics[i] for i in sorted_df.index]
 
+    region_str = ''
+    if region is not None:
+        region_str = f'_region_{region}'
     if out_dir is not None:
-        out_file = f'{var}_sorted_metrics_by_{by}_region_{region}.csv'
+        out_file = f'{var}_sorted_metrics_by_{by}{region_str}.csv'
         out_file = os.path.join(out_dir, out_file)
         sorted_df[['name', by]].to_csv(out_file)
 
@@ -92,8 +95,11 @@ def save_models_order(sorted_df, models, out_dir=None, by='weights', region=0, v
     sorted_df = sorted_df.copy()
     sorted_df['name'] = [models[i] for i in sorted_df.index]
 
+    region_str = ''
+    if region is not None:
+        region_str = f'_region_{region}'
     if out_dir is not None:
-        out_file = f'{var}_sorted_models_by_{by}_region_{region}.csv'
+        out_file = f'{var}_sorted_models_by_{by}{region_str}.csv'
         out_file = os.path.join(out_dir, out_file)
         sorted_df[['name', 'score']].to_csv(out_file)
 
