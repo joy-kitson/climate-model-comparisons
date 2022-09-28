@@ -28,7 +28,7 @@ run ncl radius_of_similarity.ncl dir\='"'${DATA_DIR}'"'
 run ./plot_rankings_diffs.py -o ${DATA_DIR} -w ww \
   --in-file ${DATA_DIR}/data_cor_ss_ww.nc \
   --models-file ${DATA_DIR}/gcms_names.txt \
-  --metrics-file ${DATA_DIR}/metrics_list.txt 
+  --metrics-file ${DATA_DIR}/metrics_list.txt
 run ./plot_cos_sim.py -o ${DATA_DIR} \
   --in-file ${DATA_DIR}/data_cor_ss_ww.nc \
   --models-file ${DATA_DIR}/gcms_names.txt

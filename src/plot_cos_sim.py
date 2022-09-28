@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument('-u', '--use-unweighted', action='store_true',
             help='Pass this flag to use the unweighted data')
     parser.add_argument('-r', '--plot-regions', action='store_true',
-            help='Pass this flag to plot eahc reigon`s data seperately')
+            help='Pass this flag to plot each reigon`s data seperately')
 
     return parser.parse_args()
 

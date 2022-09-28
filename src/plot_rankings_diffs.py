@@ -34,15 +34,21 @@ def parse_args():
             help='The name of the variable used as weights for the weighted data')
     parser.add_argument('-u', '--use-unweighted', action='store_true',
             help='Pass this flag to use the unweighted data')
+    parser.add_argument('-r', '--plot-regions', action='store_true',
+            help='Pass this flag to plot each reigon`s data seperately')
     #parser.add_argument('-n', '--num-metrics', type=int, nargs='+', default=[10],
     #        help='The number of metrics to retain (the n metrics with the heaviest weights ' + \
     #             'will be retained)')
 
     return parser.parse_args()
 
-def select_metrics(ds, by='weights', var='weighted_data', num_to_select=10, region=0):
-    df = ds.isel(regions=region)[[var, by]] \
-            .to_dataframe()
+def select_metrics(ds, by='weights', var='weighted_data', num_to_select=10,
+        region=None):
+    if region is None:
+        ds = ds.mean('regions')
+    else:
+        ds = ds.isel(regions=region)
+    df = ds[[var, by]].to_dataframe()
   
     # The variable we sort by shouldn't depend on the models, so when we sort by it here,
     # the ordering will be the same for each metric when we perform the groupby (which
@@ -124,61 +130,155 @@ def run_t_test(ranked_df, ds, var='weighted_data'):
         last_model = model
     return p_values
 
-def plot_relative_ranks(df, models, out_dir=None, by='weights', region=0, var=''):
+def get_plot_title(tagline, by='weights', region=None, var=None):
+    parenthetical = f'ranked by {by}'
+    if region is not None:
+        parenthetical += f', for region {region}'
+    return f'{tagline}\n({parenthetical})'
+
+def get_plot_out_file(x_name, y_name, by='weights', region=None, var=None):
+    filename = ''
+    if var is not None:
+        filename += f'{var}_'
+    filename += f'{y_name}_by_{by}_vs_{x_name}'
+    if region is not None:
+        filename += f'_region_{region}'
+    return filename + '.pdf'
+
+def plot_relative_ranks(df, models, out_dir=None, **kwargs):
     plt.figure()
     sns.heatmap(df, cmap='vlag', yticklabels=models) #, vmin=-10, vmax=10)
     plt.xlabel('Number of Included Metrics')
     plt.ylabel('Global Climate Models')
-    plt.title(f'Difference between current and final GCM rank\n(ranked by {by}, for region {region})')
+    plt.title(get_plot_title('Difference between current and final GCM rank',**kwargs))
     plt.tight_layout()
 
     out_file = None
     if out_dir is not None:
-        out_file = os.path.join(out_dir, f'{var}_relative_rank_by_{by}_vs_num_metrics_region_{region}.pdf')
+        out_file = os.path.join(out_dir,
+                get_plot_out_file('num_metrics', 'relative_rank', **kwargs))
     save_or_show(out_file)
     plt.close()
 
-def plot_diffs(df, models, out_dir=None, by='weights', region=0, var=''):
+def plot_diffs(df, models, out_dir=None, **kwargs):
     plt.figure()
     sns.heatmap(df, cmap='vlag', yticklabels=models, vmin=-10, vmax=10)
     plt.xlabel('Number of Included Metrics')
     plt.ylabel('Global Climate Models')
-    plt.title(f'Change in GCM rank with metric inclusion\n(ranked by {by}, for region {region})')
+    plt.title(get_plot_title('Change in GCM rank with metric inclusion', **kwargs))
     plt.tight_layout()
 
     out_file = None
     if out_dir is not None:
-        out_file = os.path.join(out_dir, f'{var}_rank_diffs_by_{by}_vs_num_metrics_region_{region}.pdf')
+        out_file = os.path.join(out_dir,
+                get_plot_out_file('num_metrics', 'rank_diffs', **kwargs))
     save_or_show(out_file)
     plt.close()
 
-def plot_scores(df, models, out_dir=None, by='weights', region=0, var=''):
+def plot_scores(df, models, out_dir=None, **kwargs):
     plt.figure()
     sns.heatmap(df, cmap='rocket', yticklabels=models)
     plt.xlabel('Number of Included Metrics')
     plt.ylabel('Weighted Score')
-    plt.title(f'GCM scores for top ranked metrics \n(ranked by {by}, for region {region})')
+    plt.title(get_plot_title('GCM scores for top ranked metrics', **kwargs))
     plt.tight_layout()
     
     out_file = None
     if out_dir is not None:
-        out_file = os.path.join(out_dir, f'{var}_rank_scores_by_{by}_vs_num_metrics_region_{region}.pdf')
+        out_file = os.path.join(out_dir,
+            get_plot_out_file('num_metrics', 'rank_scrores', **kwargs))
     save_or_show(out_file)
     plt.close()
 
-def plot_p_values(df, out_dir=None, by='weights', region=0, var=''):
+def plot_p_values(df, out_dir=None, **kwargs):
     plt.figure()
     sns.heatmap(df, cmap='vlag', vmin=0, vmax=1)
     plt.xlabel('Number of Included Metrics')
     plt.ylabel('Rank')
-    plt.title(f'P-value for paired t-test between subsequent ranks\n(ranked by {by}, for region {region})')
+    plt.title(get_plot_title('P-value for paired t-test between subsequent ranks',
+        **kwargs))
     plt.tight_layout()
     
     out_file = None
     if out_dir is not None:
-        out_file = os.path.join(out_dir, f'{var}_rank_diff_p_values_by_{by}_vs_num_metrics_region_{region}.pdf')
+        out_file = os.path.join(out_dir,
+            get_plot_out_file('num_metrics', 'rank_diff', **kwargs))
     save_or_show(out_file)
     plt.close()
+
+def get_partial_rankings(ds, metrics, models, by='weights', region=None,
+        var='weighted_data', out_dir=None):
+    dfs = []
+    total_metrics = ds['metrics'].shape[0]
+    for num_metrics in range(1, total_metrics + 1):
+        filtered_df = select_metrics(ds, by=by, var=var, region=region,
+                num_to_select=num_metrics)
+        filtered_ds = filtered_df.to_xarray()
+        ranked_df = rank_models(filtered_ds, var=var)
+        
+        ranked_df['num_metrics'] = num_metrics
+        
+        # Shouldn't run paired T-test with zero degrees of freedom
+        if num_metrics == 1:
+            ranked_df['p_value'] = np.nan
+        else:
+            ranked_df['p_value'] = run_t_test(ranked_df, filtered_ds, var=var)
+        
+        if num_metrics == total_metrics:
+            save_metrics_order(filtered_df, metrics, out_dir=out_dir, by=by, 
+                    region=region, var=var)
+            save_models_order(ranked_df, models, out_dir=out_dir, by=by, 
+                    region=region, var=var)
+        
+        dfs.append(ranked_df)
+    return pd.concat(dfs)
+
+def plot_all(df, models, by='weights', region=None, var='weighted_data', out_dir=None):
+    relative_ranks = find_relative(df, 'rank')
+    plot_relative_ranks(relative_ranks, models, out_dir=out_dir, by=by,
+            region=region, var=var)
+    
+    rank_diffs = find_diffs(df, 'rank')
+    plot_diffs(rank_diffs, models, out_dir=out_dir, by=by, region=region,
+            var=var)
+    
+    scores = to_array_like(df, 'score')
+    plot_scores(scores, models, out_dir=out_dir, by=by, region=region, var=var)
+    
+    p_value_df = to_array_like(df, 'p_value', rows='rank')
+    plot_p_values(p_value_df, out_dir=out_dir, by=by, region=region, var=var)
+
+    region_str = ''
+    if region is not None:
+        region_str = f'_region_{region}'
+    if out_dir is not None:
+        relative_ranks_df = pd.DataFrame({'rank_diff':
+            relative_ranks.stack('num_metrics')})
+        relative_ranks_ds = relative_ranks_df.to_xarray()
+        out_file = os.path.join(out_dir,
+                f'{var}_relative_ranks_by_{by}{region_str}.nc')
+        relative_ranks_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+        
+        rank_diffs_df = pd.DataFrame({'rank_diff':
+            rank_diffs.stack('num_metrics')})
+        rank_diffs_ds = rank_diffs_df.to_xarray()
+        out_file = os.path.join(out_dir,
+                f'{var}_rank_diffs_by_{by}{region_str}.nc')
+        rank_diffs_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+        
+        #score_ds = score_df.stack('num_metrics').to_xarray()
+        #out_file = os.path.join(out_dir, f'scores_by_{by}{region_str}.nc')
+        #score_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+        
+        p_value_ds = p_value_df.stack('num_metrics').to_xarray()
+        out_file = os.path.join(out_dir,
+                f'{var}_p_values_by_{by}{region_str}.nc')
+        p_value_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+
+        df.sort_values(['num_metrics','rank'], inplace=True)
+        out_file = os.path.join(out_dir,
+                f'{var}_ranked_by_{by}{region_str}.csv')
+        df[['num_metrics','rank',var, 'p_value']].to_csv(out_file)
 
 def main():
     args = parse_args()
@@ -204,70 +304,17 @@ def main():
             
     models = read_lines(models_file)
     metrics = read_lines(metrics_file)
-    total_metrics = ds['metrics'].shape[0]
 
+    kwargs = {'var': var, 'out_dir': out_dir}
     for by in ['weighted_std']: #, 'weights', 'std']:
-        for region in range(ds['regions'].shape[0]):
-            dfs = []
-            for num_metrics in range(1, total_metrics + 1):
-                filtered_df = select_metrics(ds, by=by, var=var, region=region,
-                        num_to_select=num_metrics)
-                filtered_ds = filtered_df.to_xarray()
-                ranked_df = rank_models(filtered_ds, var=var)
-                
-                ranked_df['num_metrics'] = num_metrics
-                
-                # Shouldn't run paired T-test with zero degrees of freedom
-                if num_metrics == 1:
-                    ranked_df['p_value'] = np.nan
-                else:
-                    ranked_df['p_value'] = run_t_test(ranked_df, filtered_ds, var=var)
-                
-                if num_metrics == total_metrics:
-                    save_metrics_order(filtered_df, metrics, out_dir=out_dir, by=by, 
-                            region=region, var=var)
-                    save_models_order(ranked_df, models, out_dir=out_dir, by=by, 
-                            region=region, var=var)
-                
-                dfs.append(ranked_df)
-
-            df = pd.concat(dfs)
-            
-            relative_ranks = find_relative(df, 'rank')
-            plot_relative_ranks(relative_ranks, models, out_dir=out_dir, by=by, region=region,
-                    var=var)
-            
-            rank_diffs = find_diffs(df, 'rank')
-            plot_diffs(rank_diffs, models, out_dir=out_dir, by=by, region=region, var=var)
-            
-            scores = to_array_like(df, 'score')
-            plot_scores(scores, models, out_dir=out_dir, by=by, region=region, var=var)
-            
-            p_value_df = to_array_like(df, 'p_value', rows='rank')
-            plot_p_values(p_value_df, out_dir=out_dir, by=by, region=region, var=var)
-
-            if out_dir is not None:
-                relative_ranks_df = pd.DataFrame({'rank_diff': relative_ranks.stack('num_metrics')})
-                relative_ranks_ds = relative_ranks_df.to_xarray()
-                out_file = os.path.join(out_dir, f'{var}_relative_ranks_by_{by}_region_{region}.nc')
-                relative_ranks_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
-                
-                rank_diffs_df = pd.DataFrame({'rank_diff': rank_diffs.stack('num_metrics')})
-                rank_diffs_ds = rank_diffs_df.to_xarray()
-                out_file = os.path.join(out_dir, f'{var}_rank_diffs_by_{by}_region_{region}.nc')
-                rank_diffs_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
-                
-                #score_ds = score_df.stack('num_metrics').to_xarray()
-                #out_file = os.path.join(out_dir, f'scores_by_{by}_region_{region}.nc')
-                #score_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
-                
-                p_value_ds = p_value_df.stack('num_metrics').to_xarray()
-                out_file = os.path.join(out_dir, f'{var}_p_values_by_{by}_region_{region}.nc')
-                p_value_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
-
-                df.sort_values(['num_metrics','rank'], inplace=True)
-                out_file = os.path.join(out_dir, f'{var}_ranked_by_{by}_region_{region}.csv')
-                df[['num_metrics','rank',var, 'p_value']].to_csv(out_file)
+        kwargs['by'] = by
+        if args.plot_regions:
+            for region in range(ds['regions'].shape[0]):
+                df = get_partial_rankings(ds, metrics, models, region=region, **kwargs)
+                plot_all(df, models, region=region, **kwargs)
+        else:
+            df = get_partial_rankings(ds, metrics, models, **kwargs)
+            plot_all(df, models, **kwargs)
 
 if __name__ == '__main__':
     main()
