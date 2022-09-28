@@ -20,10 +20,10 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-i', '--in-file',
-            default=os.path.join('..','data','data_cor_ss_ww.nc'),
+            default=os.path.join('..','data','metrics.nc'),
             help='The path to the input file')
     parser.add_argument('-m', '--models-file',
-            default=os.path.join('..','data','gcms_names.txt'),
+            default=os.path.join('..','data','gred.dat'),
             help='The path to a file containing the names of the GCMS')
     parser.add_argument('-M', '--metrics-file',
             default=os.path.join('..','data','metrics_list.txt'),
