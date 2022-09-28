@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+exit
 
 # Based on example from
 # /ccs/home/jkitson/.conda/envs/python-netcdf/lib/python3.10/site-packages/netCDF4/__init__.py
