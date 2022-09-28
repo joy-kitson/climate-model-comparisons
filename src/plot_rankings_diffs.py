@@ -20,16 +20,18 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-i', '--in-file',
-            default=os.path.join('..','data','metrics.nc'),
+            default=os.path.join('..','data','data_cor_ss_ww.nc'),
             help='The path to the input file')
     parser.add_argument('-m', '--models-file',
-            default=os.path.join('..','data','gred.dat'),
+            default=os.path.join('..','data','gcms_names.txt'),
             help='The path to a file containing the names of the GCMS')
     parser.add_argument('-M', '--metrics-file',
-            default=os.path.join('..','data','var.dat'),
+            default=os.path.join('..','data','metrics_list.txt'),
             help='The path to a file containing the names of the metrics')
     parser.add_argument('-o', '--out-dir', default=None,
             help='The optional path to a directory to save the output file')
+    parser.add_argument('-w', '--weights-var', default='weights',
+            help='The name of the variable used as weights for the weighted data')
     parser.add_argument('-u', '--use-unweighted', action='store_true',
             help='Pass this flag to use the unweighted data')
     #parser.add_argument('-n', '--num-metrics', type=int, nargs='+', default=[10],
@@ -191,10 +193,13 @@ def main():
         var = 'unweighted_data'
 
     ds = xr.open_dataset(in_file, mode='r')
-    ds['std'] = ds['unweighted_data'].std( 'gcms')
-    ds['weighted_std'] = ds['weights'] * ds['std']
+    if args.weights_var != 'weights':
+        ds = ds.rename({args.weights_var: 'weights'})
+
     #print(ds['weights'])
+    ds['std'] = ds['unweighted_data'].std( 'gcms')
     #print(ds['std'])
+    ds['weighted_std'] = ds['weights'] * ds['std']
     #print(ds['weighted_std'])
             
     models = read_lines(models_file)

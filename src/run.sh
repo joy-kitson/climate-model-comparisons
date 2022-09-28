@@ -17,12 +17,14 @@ DATA_DIR="../data/"
 run ncl generate_data.ncl dir\='"'${DATA_DIR}'"'
 
 run ncl radius_of_similarity.ncl dir\='"'${DATA_DIR}'"'
-run ncl heatmap_sample.ncl dir\='"'${DATA_DIR}'"'
 
-run ./plot_rankings_diffs.py -o ${DATA_DIR}
+run ./plot_rankings_diffs.py -o ${DATA_DIR} -w ww
 run ./plot_cos_sim.py -o ${DATA_DIR}
 
 for prog in circo dot sfdp ; do
   run ./plot_network.py ${DATA_DIR}/model_weighted_data_cos_sim_region*.csv \
     -t .8 -a -p ${prog}
 done
+
+# Run this last since it takes a while
+run ncl heatmap_sample.ncl dir\='"'${DATA_DIR}'"'
