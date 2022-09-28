@@ -186,7 +186,7 @@ def plot_scores(df, models, out_dir=None, **kwargs):
     out_file = None
     if out_dir is not None:
         out_file = os.path.join(out_dir,
-            get_plot_out_file('num_metrics', 'rank_scrores', **kwargs))
+            get_plot_out_file('num_metrics', 'rank_scores', **kwargs))
     save_or_show(out_file)
     plt.close()
 
