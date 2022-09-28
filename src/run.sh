@@ -5,7 +5,7 @@
 
 # Command line arguments:
 #   (1) DATA_DIR - then directory in which to save/load data. ../data by default
-# Run this script as ./run.sh [<DAT_DIR>]
+# Run this script as ./run.sh [<DATA_DIR>]
 if [ -z ${1} ]; then
   DATA_DIR="../data/"
 else
@@ -25,13 +25,15 @@ run ncl generate_data.ncl dir\='"'${DATA_DIR}'"'
 
 run ncl radius_of_similarity.ncl dir\='"'${DATA_DIR}'"'
 
-run ./plot_rankings_diffs.py -o ${DATA_DIR} -w ww
-run ./plot_cos_sim.py -o ${DATA_DIR}
-
-for prog in circo dot sfdp ; do
-  run ./plot_network.py ${DATA_DIR}/model_weighted_data_cos_sim_region*.csv \
-    -t .8 -a -p ${prog}
-done
+run ./plot_rankings_diffs.py -o ${DATA_DIR} -w ww \
+  --in-file ${DATA_DIR}/data_cor_ss_ww.nc \
+  --models-file ${DATA_DIR}/gcms_names.txt \
+  --metrics-file ${DATA_DIR}/metrics_list.txt 
+run ./plot_cos_sim.py -o ${DATA_DIR} \
+  --in-file ${DATA_DIR}/data_cor_ss_ww.nc \
+  --models-file ${DATA_DIR}/gcms_names.txt
+run ./plot_network.py ${DATA_DIR}/model_weighted_data_cos_sim_region.csv \
+  --models-file ${DATA_DIR}/gcms_names.txt -t .8 -a -p dot
 
 # Run this last since it takes a while
 run ncl heatmap_sample.ncl dir\='"'${DATA_DIR}'"'
