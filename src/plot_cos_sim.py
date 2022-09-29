@@ -126,7 +126,7 @@ def main():
     plot_distribution(cos_sim, models, out_dir=out_dir, var=var)
 
     if out_dir is not None:
-        out_file = os.path.join(out_dir, f'model_{var}_cos_sim_region.csv')
+        out_file = os.path.join(out_dir, f'model_{var}_cos_sim.csv')
         np.savetxt(out_file, cos_sim, delimiter=',')
 
 if __name__ == '__main__':

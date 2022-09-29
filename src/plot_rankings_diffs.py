@@ -177,7 +177,7 @@ def plot_diffs(df, models, out_dir=None, **kwargs):
     out_file = None
     if out_dir is not None:
         out_file = os.path.join(out_dir,
-                get_plot_out_file('num_metrics', 'rank_diffs', **kwargs))
+                get_plot_out_file('num_metrics', 'rank_diff', **kwargs))
     save_or_show(out_file)
     plt.close()
 
@@ -248,8 +248,8 @@ def plot_all(df, models, by='weights', region=None, var='weighted_data', out_dir
     plot_diffs(rank_diffs, models, out_dir=out_dir, by=by, region=region,
             var=var)
     
-    scores = to_array_like(df, 'score')
-    plot_scores(scores, models, out_dir=out_dir, by=by, region=region, var=var)
+    score_df = to_array_like(df, 'score')
+    plot_scores(score_df, models, out_dir=out_dir, by=by, region=region, var=var)
     
     p_value_df = to_array_like(df, 'p_value', rows='rank')
     plot_p_values(p_value_df, out_dir=out_dir, by=by, region=region, var=var)
@@ -262,19 +262,19 @@ def plot_all(df, models, by='weights', region=None, var='weighted_data', out_dir
             relative_ranks.stack('num_metrics')})
         relative_ranks_ds = relative_ranks_df.to_xarray()
         out_file = os.path.join(out_dir,
-                f'{var}_relative_ranks_by_{by}{region_str}.nc')
+                f'{var}_relative_rank_by_{by}{region_str}.nc')
         relative_ranks_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
         
         rank_diffs_df = pd.DataFrame({'rank_diff':
             rank_diffs.stack('num_metrics')})
         rank_diffs_ds = rank_diffs_df.to_xarray()
         out_file = os.path.join(out_dir,
-                f'{var}_rank_diffs_by_{by}{region_str}.nc')
+                f'{var}_rank_diff_by_{by}{region_str}.nc')
         rank_diffs_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
         
-        #score_ds = score_df.stack('num_metrics').to_xarray()
-        #out_file = os.path.join(out_dir, f'scores_by_{by}{region_str}.nc')
-        #score_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
+        score_ds = score_df.stack('num_metrics').to_xarray()
+        out_file = os.path.join(out_dir, f'{var}_rank_scores_by_{by}{region_str}.nc')
+        score_ds.to_netcdf(out_file, format='NETCDF4_CLASSIC')
         
         p_value_ds = p_value_df.stack('num_metrics').to_xarray()
         out_file = os.path.join(out_dir,
